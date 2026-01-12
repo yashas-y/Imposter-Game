@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imposter Game</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        
+        const Users = (props) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+        const Shuffle = (props) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>;
+        const Eye = (props) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>;
+        const AlertCircle = (props) => <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+        function ImposterGame() {
+          const [screen, setScreen] = useState('home');
+          const [topic, setTopic] = useState('');
+          const [numPlayers, setNumPlayers] = useState(5);
+          const [loading, setLoading] = useState(false);
+          const [deck, setDeck] = useState(null);
+          const [currentPlayer, setCurrentPlayer] = useState(0);
+          const [revealed, setRevealed] = useState(false);
+          const [selectedWord, setSelectedWord] = useState(null);
+          const [imposterIndex, setImposterIndex] = useState(null);
+          const [startingPlayer, setStartingPlayer] = useState(null);
+
+          const generateDeck = async () => {
+            setLoading(true);
+            try {
+              const response = await fetch('/.netlify/functions/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic, numPlayers })
+              });
+
+              if (!response.ok) throw new Error('Generation failed');
+
+              const data = await response.json();
+              setDeck(data);
+              setScreen('setup');
+            } catch (err) {
+              alert('Error generating deck. Please try again!');
+              console.error(err);
+            }
+            setLoading(false);
+          };
+
+          const startGame = () => {
+            if (!deck || !deck.items || deck.items.length < numPlayers) {
+              alert('Not enough items generated.');
+              return;
+            }
+            
+            setSelectedWord(deck.items[Math.floor(Math.random() * deck.items.length)]);
+            setImposterIndex(Math.floor(Math.random() * numPlayers));
+            setStartingPlayer(Math.floor(Math.random() * numPlayers));
+            setCurrentPlayer(0);
+            setRevealed(false);
+            setScreen('play');
+          };
+
+          const nextPlayer = () => {
+            if (currentPlayer < numPlayers - 1) {
+              setCurrentPlayer(currentPlayer + 1);
+              setRevealed(false);
+            } else {
+              setScreen('voting');
+            }
+          };
+
+          const playAgain = () => {
+            if (!deck?.items) return;
+            setSelectedWord(deck.items[Math.floor(Math.random() * deck.items.length)]);
+            setImposterIndex(Math.floor(Math.random() * numPlayers));
+            setStartingPlayer(Math.floor(Math.random() * numPlayers));
+            setCurrentPlayer(0);
+            setRevealed(false);
+            setScreen('play');
+          };
+
+          const resetGame = () => {
+            setScreen('home');
+            setTopic('');
+            setDeck(null);
+            setCurrentPlayer(0);
+            setRevealed(false);
+            setSelectedWord(null);
+            setImposterIndex(null);
+            setStartingPlayer(null);
+          };
+
+          const getPlayerRole = (playerIndex) => {
+            if (!deck || !selectedWord || imposterIndex === null) return null;
+            return playerIndex === imposterIndex 
+              ? { isImposter: true, word: '???' }
+              : { isImposter: false, word: selectedWord };
+          };
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4">
+              <div className="max-w-2xl mx-auto">
+                <div className="text-center py-8">
+                  <h1 className="text-5xl font-bold mb-2">🎭 Imposter</h1>
+                  <p className="text-purple-200">AI-Generated Custom Decks</p>
+                </div>
+
+                {screen === 'home' && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
+                    <h2 className="text-3xl font-bold mb-6 text-center">Create Your Game</h2>
+                    
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Game Topic</label>
+                        <input
+                          type="text"
+                          value={topic}
+                          onChange={(e) => setTopic(e.target.value)}
+                          placeholder="e.g., Animals, Movies, Food..."
+                          className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Number of Players</label>
+                        <input
+                          type="number"
+                          min="3"
+                          max="10"
+                          value={numPlayers}
+                          onChange={(e) => setNumPlayers(parseInt(e.target.value))}
+                          className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 text-white"
+                        />
+                      </div>
+
+                      <button
+                        onClick={generateDeck}
+                        disabled={!topic || loading}
+                        className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-bold text-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                      >
+                        {loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Shuffle className="w-5 h-5" />
+                            Generate Deck
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="mt-8 p-4 bg-blue-500/20 rounded-xl">
+                      <h3 className="font-bold mb-2 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5" />
+                        How to Play
+                      </h3>
+                      <ul className="text-sm space-y-1 text-purple-200">
+                        <li>• Each player gets a secret word</li>
+                        <li>• One player is the Imposter (gets "???")</li>
+                        <li>• Describe your word without saying it</li>
+                        <li>• Vote to eliminate the Imposter!</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {screen === 'setup' && deck && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
+                    <h2 className="text-3xl font-bold mb-4 text-center">✅ Deck Ready!</h2>
+                    
+                    <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl p-6 mb-6">
+                      <h3 className="text-xl font-bold mb-2">Topic: {deck.topic}</h3>
+                      <p className="text-purple-200">Players: {numPlayers}</p>
+                      <p className="text-sm text-purple-300 mt-2">Generated {deck.items.length} items</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <button onClick={startGame} className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl font-bold text-lg hover:from-green-600 hover:to-emerald-600 transition-all transform hover:scale-105 flex items-center justify-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Start Game
+                      </button>
+                      <button onClick={resetGame} className="w-full py-3 bg-white/10 rounded-xl font-medium hover:bg-white/20 transition-all">
+                        Generate New Deck
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {screen === 'play' && deck && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
+                    <div className="text-center mb-6">
+                      <div className="inline-block px-4 py-2 bg-purple-500/30 rounded-full mb-4">
+                        Player {currentPlayer + 1} of {numPlayers}
+                      </div>
+                      <h2 className="text-2xl font-bold">Pass to Player {currentPlayer + 1}</h2>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl p-8 mb-6 min-h-64 flex flex-col items-center justify-center">
+                      {!revealed ? (
+                        <button onClick={() => setRevealed(true)} className="py-6 px-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl font-bold text-2xl hover:from-yellow-600 hover:to-orange-600 transition-all transform hover:scale-105 flex items-center gap-3">
+                          <Eye className="w-7 h-7" />
+                          Reveal Your Role
+                        </button>
+                      ) : (
+                        <div className="text-center">
+                          {getPlayerRole(currentPlayer).isImposter ? (
+                            <>
+                              <div className="text-6xl mb-4">🎭</div>
+                              <h3 className="text-4xl font-bold text-red-400 mb-2">You are the IMPOSTER!</h3>
+                              <p className="text-xl text-purple-200">Blend in without knowing the word!</p>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-6xl mb-4">👤</div>
+                              <h3 className="text-2xl font-bold mb-4">Your word is:</h3>
+                              <div className="text-5xl font-bold text-yellow-300 mb-2">{getPlayerRole(currentPlayer).word}</div>
+                              <p className="text-purple-200">Don't say it directly!</p>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {revealed && (
+                      <button onClick={nextPlayer} className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl font-bold text-lg hover:from-blue-600 hover:to-cyan-600 transition-all">
+                        {currentPlayer < numPlayers - 1 ? 'Next Player →' : 'Start Playing →'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {screen === 'voting' && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
+                    <h2 className="text-3xl font-bold mb-6 text-center">🎮 Time to Play!</h2>
+                    
+                    <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-2xl p-6 mb-6">
+                      <div className="text-center">
+                        <div className="text-6xl mb-4">🎲</div>
+                        <h3 className="text-3xl font-bold mb-3">Player {startingPlayer + 1} starts!</h3>
+                        <p className="text-lg text-purple-200">Go clockwise from Player {startingPlayer + 1}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl p-6 mb-6">
+                      <h3 className="text-xl font-bold mb-3 text-center">📋 How to Play</h3>
+                      <ul className="space-y-2 text-purple-200">
+                        <li>• Take turns describing your word</li>
+                        <li>• Imposter must blend in</li>
+                        <li>• Discuss who seems suspicious</li>
+                        <li>• Vote to eliminate the Imposter!</li>
+                      </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                      <button onClick={playAgain} className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl font-bold text-lg hover:from-green-600 hover:to-emerald-600 transition-all">
+                        Play Again (Same Deck)
+                      </button>
+                      <button onClick={resetGame} className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all">
+                        Generate New Deck
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        ReactDOM.render(<ImposterGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>

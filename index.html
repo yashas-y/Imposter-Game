@@ -32,6 +32,12 @@
           const [startingPlayer, setStartingPlayer] = useState(null);
           const [usedWords, setUsedWords] = useState([]);
 
+          const getRandomInt = (max) => {
+            const array = new Uint32Array(1);
+            window.crypto.getRandomValues(array);
+            return array[0] % max;
+          };
+
           const generateDeck = async () => {
             setLoading(true);
             try {
@@ -59,11 +65,11 @@
               return;
             }
             
-            const word = deck.items[Math.floor(Math.random() * deck.items.length)];
+            const word = deck.items[getRandomInt(deck.items.length)];
             setSelectedWord(word);
             setUsedWords([word]);
-            setImposterIndex(Math.floor(Math.random() * numPlayers));
-            setStartingPlayer(Math.floor(Math.random() * numPlayers));
+            setImposterIndex(getRandomInt(numPlayers));
+            setStartingPlayer(getRandomInt(numPlayers));
             setCurrentPlayer(0);
             setRevealed(false);
             setScreen('play');
@@ -88,11 +94,11 @@
               return;
             }
 
-            const word = availableWords[Math.floor(Math.random() * availableWords.length)];
+            const word = availableWords[getRandomInt(availableWords.length)];
             setSelectedWord(word);
             setUsedWords([...usedWords, word]);
-            setImposterIndex(Math.floor(Math.random() * numPlayers));
-            setStartingPlayer(Math.floor(Math.random() * numPlayers));
+            setImposterIndex(getRandomInt(numPlayers));
+            setStartingPlayer(getRandomInt(numPlayers));
             setCurrentPlayer(0);
             setRevealed(false);
             setScreen('play');

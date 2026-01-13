@@ -30,6 +30,7 @@
           const [selectedWord, setSelectedWord] = useState(null);
           const [imposterIndex, setImposterIndex] = useState(null);
           const [startingPlayer, setStartingPlayer] = useState(null);
+          const [usedWords, setUsedWords] = useState([]);
 
           const generateDeck = async () => {
             setLoading(true);
@@ -58,7 +59,9 @@
               return;
             }
             
-            setSelectedWord(deck.items[Math.floor(Math.random() * deck.items.length)]);
+            const word = deck.items[Math.floor(Math.random() * deck.items.length)];
+            setSelectedWord(word);
+            setUsedWords([word]);
             setImposterIndex(Math.floor(Math.random() * numPlayers));
             setStartingPlayer(Math.floor(Math.random() * numPlayers));
             setCurrentPlayer(0);
@@ -77,7 +80,17 @@
 
           const playAgain = () => {
             if (!deck?.items) return;
-            setSelectedWord(deck.items[Math.floor(Math.random() * deck.items.length)]);
+            
+            const availableWords = deck.items.filter(word => !usedWords.includes(word));
+            
+            if (availableWords.length === 0) {
+              alert('All words from this deck have been used! Please generate a new deck.');
+              return;
+            }
+
+            const word = availableWords[Math.floor(Math.random() * availableWords.length)];
+            setSelectedWord(word);
+            setUsedWords([...usedWords, word]);
             setImposterIndex(Math.floor(Math.random() * numPlayers));
             setStartingPlayer(Math.floor(Math.random() * numPlayers));
             setCurrentPlayer(0);
@@ -94,6 +107,7 @@
             setSelectedWord(null);
             setImposterIndex(null);
             setStartingPlayer(null);
+            setUsedWords([]);
           };
 
           const getPlayerRole = (playerIndex) => {

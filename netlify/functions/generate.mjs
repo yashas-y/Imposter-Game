@@ -30,10 +30,22 @@ export const handler = async (event) => {
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [{
+          role: 'system',
+          content: 'You are a game engine helper. Your job is to generate specific examples for a given category. Never return sub-categories. Always return specific instances.'
+        }, {
           role: 'user',
-          content: `Generate exactly ${numPlayers} related items for the topic "${topic}". Make them similar but with slight variations. Return ONLY valid JSON: {"topic":"${topic}","items":["item1","item2","item3"]}`
+          content: `Generate exactly ${numPlayers} specific items for the topic "${topic}".
+          
+          RULES:
+          1. Return specific instances, NOT categories.
+          2. If the topic is "Animals", return specific animals like "Lion", "Elephant", "Penguin". Do NOT return "Wild Animals" or "Zoo Animals".
+          3. If the topic is "Food", return specific foods like "Pizza", "Burger", "Sushi". Do NOT return "Fast Food" or "Dinner".
+          4. The items should be distinct but related enough for a game of Imposter.
+          5. Return ONLY valid JSON.
+          
+          Format: {"topic":"${topic}","items":["item1","item2","item3"]}`
         }],
-        temperature: 0.8,
+        temperature: 0.7,
         max_tokens: 500
       })
     });
@@ -46,6 +58,11 @@ export const handler = async (event) => {
     const data = await response.json();
     const text = data.choices[0].message.content;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+      throw new Error('No valid JSON in response');
+    }
+
     const parsed = JSON.parse(jsonMatch[0]);
 
     return {
